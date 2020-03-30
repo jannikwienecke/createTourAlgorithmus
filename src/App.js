@@ -2,7 +2,6 @@ import React from "react";
 import "./styles.css";
 
 import Paletts from "./Pallets";
-import { LKW, LoadingZone } from "./styles";
 import { DELIVERY } from "./data";
 
 export default function App() {

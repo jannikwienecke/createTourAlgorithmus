@@ -13,7 +13,7 @@ export const compare = (a, b) => {
 
 export const removeValidatedPallets = (pallets, indexRemove) => {
   return pallets.filter((pallet, index) => {
-    var indexLeft = !indexRemove.includes(index);
+    var indexLeft = !indexRemove.includes(pallet.id);
     return indexLeft;
   });
 };
@@ -42,15 +42,21 @@ export const getSortedListBy = typeToFind => {
 
 export const unpackPalletGroups = pallets => {
   var pallets_ = [];
-  pallets.forEach(pallet =>
-    [...Array(pallet.quantity).keys()].forEach(i => {
-      pallets_.push(pallet);
-    })
-  );
+  pallets.forEach((pallet, index) => {
+    return [...Array(pallet.quantity).keys()].forEach(i => {
+      pallet.id = `${index}_${i}`;
+
+      pallets_.push(JSON.parse(JSON.stringify(pallet)));
+    });
+  });
+
   // pallets_ = pallets_.map(pallet => {
   //   pallet.quantity = 1;
   //   return pallet;
   // });
-
   return JSON.parse(JSON.stringify(pallets_));
+};
+
+export const copy = el => {
+  return JSON.parse(JSON.stringify(el));
 };

@@ -1,53 +1,110 @@
 import React, { useState, useEffect } from "react";
 
 import { LoadingZone, PalleteWrapper, LKW } from "./styles";
-import {
-  EURO,
-  INDUSTRY,
-  DIMENSIONS,
-  MAX_HEIGHT,
-  LKW_12,
-  LKW_7
-} from "./constants";
-import {
-  compare,
-  removeValidatedPallets,
-  getIndexOfType,
-  getSortedListBy,
-  unpackPalletGroups
-} from "./helper";
-var BreakException = {};
+import { DIMENSIONS } from "./constants";
+import { compare, copy } from "./helper";
+import { validate } from "./algorithmus";
 
 const Pallets = ({ delivery }) => {
-  const [trucks, setTrucks] = useState();
+  const [trucks, setTrucks] = useState(null);
+  const [rerender, setRerender] = useState(null);
+  const [palletFocus, setPalletFocus] = useState(null);
 
   useEffect(() => {
-    console.log("GET TRUCKS");
     getTrucks();
   }, [delivery]);
 
+  const switchSpaces = (index, indexLkw, p1) => {
+    trucks[indexLkw].pallets[index] = copy(palletFocus.pallet);
+    trucks[palletFocus.indexLkw].pallets[palletFocus.index] = copy(p1);
+    setTrucks(trucks);
+    setPalletFocus(null);
+    setRerender(true);
+    setTimeout(() => {
+      setRerender(false);
+    }, 5);
+  };
+
+  const isSamePallet = (indexLkw, index) => {
+    if (
+      palletFocus &&
+      index === palletFocus.index &&
+      indexLkw === palletFocus.indexLkw
+    ) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  const handleClickFreeSpace = (indexLkw, index, freeSpace) => {
+    // console.log("CLICK FREE SPACE...", indexLkw, index, freeSpace);
+
+    if (palletFocus) {
+      const { width, height } = DIMENSIONS[palletFocus.pallet.type];
+      if (width <= freeSpace.width && height <= freeSpace.height) {
+        switchSpaces(index, indexLkw, freeSpace);
+      }
+    }
+  };
+
+  const setFocus = (index, indexLkw) => {
+    setPalletFocus({
+      pallet: JSON.parse(JSON.stringify(trucks[indexLkw].pallets[index])),
+      index,
+      indexLkw
+    });
+  };
+
+  const handleClickPallete = (indexLkw, index, pallet) => {
+    // console.log("CLICK PALLETE...", indexLkw, index, pallet);
+
+    if (isSamePallet(indexLkw, index)) {
+      setPalletFocus(null);
+    } else if (!palletFocus) {
+      setFocus(index, indexLkw);
+    } else {
+      switchSpaces(index, indexLkw, pallet);
+    }
+  };
+
   const renderTrucks = () => {
     if (!trucks) return <h1>Loading..</h1>;
-    return trucks.map((loading, index) => {
+    return trucks.map((loading, indexLkw) => {
       const { pallets, lkw } = loading;
-
       return (
-        <LKW key={index} count={index + 1} width={lkw.max_width}>
-          <LoadingZone width={lkw.max_loading}>
-            {pallets.map(pallete => {
-              console.log("pallete", pallete);
+        <LKW key={indexLkw} count={indexLkw + 1} width={lkw.max_width}>
+          <LoadingZone
+            onClick={() => console.log("CLICK ON ME")}
+            width={lkw.max_loading}
+          >
+            {pallets.map((pallete, index) => {
+              pallete.isSelected = false;
+
+              if (palletFocus && pallete.id === palletFocus.pallet.id) {
+                pallete.isSelected = true;
+              }
+
               if (!pallete.position) {
                 return (
-                  <PalleteWrapper type={pallete.type}>
+                  <PalleteWrapper
+                    onClick={() => handleClickPallete(indexLkw, index, pallete)}
+                    type={pallete.type}
+                    isSelected={pallete.isSelected}
+                  >
                     {pallete.type} - Ort: {pallete.factory}
+                    ID - {pallete.id}
                   </PalleteWrapper>
                 );
               } else {
                 return (
                   <PalleteWrapper
-                    onClick={() => console.log("enpty...", pallete)}
+                    onClick={() =>
+                      handleClickFreeSpace(indexLkw, index, pallete)
+                    }
                     type={pallete.type}
                     isFree
+                    isSelected={pallete.isSelected}
                   />
                 );
               }
@@ -62,313 +119,11 @@ const Pallets = ({ delivery }) => {
     const sorted = delivery.sort(compare);
     const loadings = validate(sorted);
     setTrucks(loadings);
-    console.log("..........");
   };
+
+  console.log(trucks);
 
   return <>{renderTrucks()}</>;
 };
 
 export default Pallets;
-
-const validate = pallets => {
-  console.log(JSON.parse(JSON.stringify(pallets)));
-  pallets = unpackPalletGroups(pallets);
-  console.log("=================================");
-  console.log(JSON.parse(JSON.stringify(pallets)));
-
-  const lkwList = [LKW_12, LKW_7];
-  var validated = [];
-  var loadings = [];
-  var lastPallet = null;
-  var counter_lkw = 0;
-  var currentLKW = lkwList[0];
-  var indexRemove = [];
-  var width_counter = 0;
-  var height_counter = 0;
-  var addCurrentIndex = false;
-  var currentIndex = null;
-  var freeSpaces = [];
-
-  const fitsHeight = pallet => {
-    const { height } = DIMENSIONS[pallet.type];
-    if (height_counter + height < MAX_HEIGHT) {
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  const fitsAny = height => {
-    const heightLeft = MAX_HEIGHT - height_counter;
-
-    if (height) {
-      if (heightLeft >= height) {
-        return true;
-      } else {
-        return false;
-      }
-    }
-
-    if (heightLeft >= 80) {
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  const nextLkw = pallet => {
-    console.log("NEXT LKW!!!!!dsdad");
-    validated.pop();
-    loadings.push({
-      pallets: validated,
-      lkw: currentLKW
-    });
-    validated = [];
-    validated.push(pallet);
-    width_counter = 0;
-    height_counter = 0;
-    counter_lkw++;
-    var lkwIndex = counter_lkw % lkwList.length;
-    currentLKW = lkwList[lkwIndex];
-  };
-
-  const addNewRowInLKW = (width, height, pallet) => {
-    console.log("NEW ROW...", width_counter);
-    console.log("HEIGHT COUNTER...", height_counter);
-    console.log("LEFT OVER", MAX_HEIGHT - height_counter);
-    var heightLeft = MAX_HEIGHT - height_counter;
-    if (heightLeft >= 80 && width_counter > 0) {
-      console.log("FREEE = ", heightLeft);
-      console.log("lastPallet = ", lastPallet);
-
-      freeSpaces.push({
-        height: heightLeft,
-        width: DIMENSIONS[lastPallet.type].width,
-        position: validated.length - 1
-      });
-    }
-
-    width_counter += width;
-    height_counter = height;
-
-    if (width_counter > currentLKW.max_loading) {
-      nextLkw(pallet);
-    }
-  };
-
-  const addToDelivery = (pallet, index) => {
-    console.log(`---Add To Delivery Index ${index}--- `);
-
-    const { height, width } = DIMENSIONS[pallet.type];
-
-    validated.push(pallet);
-    indexRemove.push(index);
-
-    if (width_counter === 0) {
-      addNewRowInLKW(width, height, pallet);
-    } else if (!fitsAny(height)) {
-      addNewRowInLKW(width, height, pallet);
-    } else {
-      height_counter += height;
-    }
-
-    lastPallet = pallet;
-
-    console.log(`STATUS: WIDTH: ${width_counter} HEIGHT ${height_counter}`);
-  };
-
-  const validateIfPalletToFindIsSingle = (availablePallets, typeToFind) => {
-    var indexOfType = getIndexOfType(availablePallets, typeToFind);
-    var quantity = typeToFind === EURO ? 2 : 1;
-
-    if (indexOfType.length === quantity) {
-      return indexOfType;
-    } else {
-      return false;
-    }
-  };
-
-  const getPalletsOfType = (type, availablePallets) => {
-    return availablePallets.filter(pallet => pallet.type === type);
-  };
-
-  const isOddQuantityOfType = (type, availablePallets) => {
-    var palletsOfType = getPalletsOfType(type, availablePallets);
-    console.log(palletsOfType);
-
-    var divider = type === EURO ? 3 : 2;
-    return palletsOfType.length % divider !== 0;
-  };
-
-  const validateIfPalletToFindIsOddQuantity = (
-    availablePallets,
-    typeToFind
-  ) => {
-    console.log("validateIfPalletToFindIsOddQuantity...", typeToFind);
-
-    const allTypes = getSortedListBy(typeToFind);
-    var indexOfType = null;
-
-    allTypes.forEach(type => {
-      if (!indexOfType) {
-        var isOdd = isOddQuantityOfType(type, availablePallets);
-        console.log("IS ODD !!!", isOdd, availablePallets);
-        if (isOdd) {
-          indexOfType = getIndexOfType(availablePallets, type);
-          if (type !== typeToFind) {
-            addCurrentIndex = currentIndex;
-          }
-        }
-      }
-    });
-    if (indexOfType) {
-      return [indexOfType[0]];
-    } else {
-      return false;
-    }
-  };
-
-  const findSinglePalletIndex = (availablePallets, typeToFind) => {
-    console.log("findSinglePalletIndex availablePallets", availablePallets);
-
-    var indexFound = validateIfPalletToFindIsSingle(
-      availablePallets,
-      typeToFind
-    );
-
-    indexFound = validateIfPalletToFindIsOddQuantity(
-      availablePallets,
-      typeToFind
-    );
-
-    if (indexFound) return indexFound;
-  };
-
-  const addPalletsOfIndexToDelivery = (pallets, index, indexList) => {
-    console.log("addPalletsOfIndexToDelivery ", pallets, index, indexList);
-
-    if (addCurrentIndex) {
-      addToDelivery(pallets[currentIndex], currentIndex);
-    }
-
-    indexList.forEach(index_ => {
-      const indexAdd = index + index_ + 1;
-      const palletToAdd = pallets[indexAdd];
-      addToDelivery(palletToAdd, indexAdd);
-    });
-
-    throw BreakException;
-  };
-
-  const validateIfOtherPalletFits = (pallet, index, typeToFind) => {
-    console.log("validateIfOtherPalletFits...", typeToFind);
-
-    var availablePallets = pallets.slice(index + 1);
-
-    const indexList = findSinglePalletIndex(availablePallets, typeToFind);
-
-    if (indexList) {
-      addPalletsOfIndexToDelivery(pallets, index, indexList);
-    } else {
-      return false;
-    }
-  };
-
-  const handlePalletOnNextRow = (pallet, index) => {
-    console.log("handlePalletOnNextRow...");
-    addToDelivery(pallet, index);
-  };
-
-  const handlePalletFitsPerfectOnRow = (pallet, index) => {
-    console.log("handlePalletOnNextRow...");
-    addToDelivery(pallet, index);
-  };
-
-  const handlePalletFitsNotPerfectOnRow = (pallet, index, heightLeft) => {
-    console.log("handlePalletFitsNotPerfectOnRow...", heightLeft);
-    const type = pallet.type;
-
-    if (heightLeft >= 80) {
-      addToDelivery(pallet, index);
-    } else if (type === EURO && heightLeft > 40 && heightLeft < 80) {
-      validateIfOtherPalletFits(pallet, index, INDUSTRY);
-    } else if (type === INDUSTRY && heightLeft > 40 && heightLeft < 120) {
-      validateIfOtherPalletFits(pallet, index, EURO);
-    }
-  };
-
-  const handlePalletDoesNotFit = (pallet, index, heightLeft) => {
-    console.log("handlePalletDoesNotFit...");
-    const type = pallet.type;
-    const { height } = DIMENSIONS[pallet.type];
-
-    heightLeft += height;
-
-    if (type === INDUSTRY && heightLeft >= 80) {
-      var typeToFind = EURO;
-    }
-
-    if (!validateIfOtherPalletFits(pallet, index, typeToFind)) {
-      console.log("PALLET ADD TO DELIVER !!!!!!!!!!!!");
-      addToDelivery(pallet, index);
-    }
-  };
-
-  const sort_ = pallets_ => {
-    pallets_.forEach((pallet, index) => {
-      console.log("");
-      console.log("");
-      console.log("");
-      console.log(`------------${index}----------`);
-      console.log(pallet);
-
-      currentIndex = index;
-      const { height } = DIMENSIONS[pallet.type];
-      const heightLeft = MAX_HEIGHT - height_counter - height;
-
-      if (!fitsAny()) {
-        handlePalletOnNextRow(pallet, index);
-      } else if (fitsHeight(pallet) && heightLeft < 20) {
-        handlePalletFitsPerfectOnRow(pallet, index);
-      } else if (fitsHeight(pallet) && heightLeft >= 20) {
-        handlePalletFitsNotPerfectOnRow(pallet, index, heightLeft);
-      } else {
-        handlePalletDoesNotFit(pallet, index, heightLeft);
-      }
-    });
-  };
-
-  for (var xx = 0; xx < 100; xx++) {
-    pallets = removeValidatedPallets(pallets, indexRemove);
-
-    if (pallets.length === 0) break;
-
-    try {
-      indexRemove = [];
-      sort_(pallets);
-    } catch (e) {
-      if (e !== BreakException) {
-        throw e;
-      }
-    }
-  }
-
-  if (validated) {
-    loadings.push({
-      pallets: validated,
-      lkw: currentLKW
-    });
-  }
-
-  console.log("LOADINGS", loadings);
-  console.log("validated", validated);
-  console.log("freeSpaces", freeSpaces);
-
-  freeSpaces.forEach(space => {
-    var index_ = space.position;
-    loadings[0].pallets.splice(index_, 0, space);
-  });
-  // loadings[0].pallets.splice(5, 0, loadings[0].pallets[1]);
-
-  return loadings;
-};

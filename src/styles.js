@@ -75,4 +75,11 @@ ${({ isFree }) =>
   `
   background : #af4448;
  `}
+
+ ${({ isSelected }) =>
+   isSelected &&
+   `
+  border : 2px solid #af4448;
+ `}
+
 `;
