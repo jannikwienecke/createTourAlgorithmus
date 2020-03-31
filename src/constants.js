@@ -10,13 +10,13 @@ export const MAX_WIDTH_12 = 620;
 export const MAX_WIDTH_7 = 510;
 
 export const LKW_12 = {
-  max_width: 720,
-  max_loading: 620,
-  height: 240
+  maxWidth: 720,
+  maxLoading: 620,
+  maxHeight: 240
 };
 
 export const LKW_7 = {
-  max_width: 610,
-  max_loading: 510,
-  height: 240
+  maxWidth: 610,
+  maxLoading: 510,
+  maxHeight: 240
 };

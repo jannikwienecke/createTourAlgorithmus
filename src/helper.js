@@ -60,3 +60,31 @@ export const unpackPalletGroups = pallets => {
 export const copy = el => {
   return JSON.parse(JSON.stringify(el));
 };
+
+export const isMinSpace = (width, height) => {
+  var isValid = false;
+  if (width >= 120 && height >= 80) {
+    isValid = true;
+  } else if (width >= 100 && height >= 120) {
+    isValid = true;
+  }
+
+  return isValid;
+};
+
+export const findIndexPalletInArr = (truck, id) => {
+  console.log("TO FIND", truck, id);
+
+  var index_column = null;
+  var index_row = null;
+  truck.arr.forEach((column, index_column_) => [
+    column.forEach((pallet, index_row_) => {
+      if (pallet.id === id) {
+        index_column = index_column_;
+        index_row = index_row_;
+      }
+    })
+  ]);
+
+  return [index_column, index_row];
+};

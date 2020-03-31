@@ -41,11 +41,10 @@ export const LoadingZone = styled.div`
 `;
 
 export const PalleteWrapper = styled.div`
-height: 80px;
-/* background: #ddd; */
 border: 1px solid #ccc;
 background: #fefefe;
-margin: 0.5px;
+// margin: 0.5px;
+margin-top: 1.2px;
 position: relative;
 
 ${({ type }) =>
@@ -70,16 +69,36 @@ ${({ turn, type }) =>
   height: 120px;
  `}
 
-${({ isFree }) =>
-  isFree &&
-  `
-  background : #af4448;
- `}
-
  ${({ isSelected }) =>
    isSelected &&
    `
   border : 2px solid #af4448;
  `}
+
+ ${({ width, height }) =>
+   width &&
+   height &&
+   `
+width : ${width}px;
+height : ${height}px;
+`}
+
+${({ freeSpaceType, width }) =>
+  freeSpaceType == "end" &&
+  `
+  border : 2px solid #af4448;
+  height : 96%;
+  background : transparent;
+  width: ${width - 7}px;
+  position: relative;
+  top: 0.5px;
+  left: 1.5px;
+ `}
+
+ ${({ freeSpaceType }) =>
+   freeSpaceType == "filler" &&
+   `
+   background: #af4448;
+`}
 
 `;
