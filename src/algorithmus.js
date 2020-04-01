@@ -12,30 +12,11 @@ import {
   getSortedListBy,
   unpackPalletGroups,
   copy,
-  isMinSpace,
-  findIndexPalletInArr
+  isMinSpace
 } from "./helper";
 
 var BreakException = {};
 export const validate = pallets => {
-  pallets = unpackPalletGroups(pallets);
-  // console.log(JSON.parse(JSON.stringify(pallets)));
-
-  const lkwList = [LKW_12, LKW_7];
-  var validated = [];
-  var loadings = [];
-  var lastPallet = null;
-  var counter_lkw = 0;
-  var currentLKW = lkwList[0];
-  var indexRemove = [];
-  var width_counter = 0;
-  var height_counter = 0;
-  var addCurrentIndex = false;
-  var currentIndex = null;
-  var freeSpaces = [];
-  var LKW = [];
-  var currentRow = [];
-
   const fitsHeight = pallet => {
     const { height } = DIMENSIONS[pallet.type];
     if (height_counter + height < MAX_HEIGHT) {
@@ -64,18 +45,13 @@ export const validate = pallets => {
   };
 
   const nextLkw = pallet => {
-    // console.log("NEXT LKW!");
     LKW.push(currentRow);
-    validated.pop();
-    loadings.push({
-      pallets: validated,
+    trucks.push({
       lkw: currentLKW,
       arr: LKW
     });
     LKW = [];
     currentRow = [];
-    validated = [];
-    validated.push(pallet);
 
     const { height, width } = DIMENSIONS[pallet.type];
 
@@ -88,15 +64,6 @@ export const validate = pallets => {
   };
 
   const addNewRowInLKW = (width, height, pallet) => {
-    var heightLeft = MAX_HEIGHT - height_counter;
-    if (heightLeft >= 80 && width_counter > 0) {
-      freeSpaces.push({
-        height: heightLeft,
-        width: DIMENSIONS[lastPallet.type].width,
-        position: validated.length - 1
-      });
-    }
-
     width_counter += width;
     height_counter = height;
 
@@ -122,7 +89,6 @@ export const validate = pallets => {
 
     const { height, width } = DIMENSIONS[pallet.type];
 
-    validated.push(copy(pallet));
     indexRemove.push(pallet.id);
 
     if (width_counter === 0) {
@@ -134,10 +100,6 @@ export const validate = pallets => {
 
       height_counter += height;
     }
-
-    lastPallet = pallet;
-
-    // console.log(`STATUS: WIDTH: ${width_counter} HEIGHT ${height_counter}`);
   };
 
   const validateIfPalletToFindIsSingle = (availablePallets, typeToFind) => {
@@ -175,11 +137,9 @@ export const validate = pallets => {
     allTypes.forEach(type => {
       if (!indexOfType) {
         var isOdd = isOddQuantityOfType(type, availablePallets);
-        // console.log("IS ODD !!!", isOdd, availablePallets);
         if (isOdd) {
           indexOfType = getIndexOfType(availablePallets, type);
           if (type !== typeToFind) {
-            // console.log("CURRENT INDEX!!!!!!!!!!!!!!!!!!!!!");
             addCurrentIndex = currentIndex;
           }
         }
@@ -273,14 +233,13 @@ export const validate = pallets => {
     }
 
     if (!validateIfOtherPalletFits(pallet, index, typeToFind)) {
-      // console.log("PALLET ADD TO DELIVER !!!!!!!!!!!!");
       addToDelivery(pallet, index);
     }
   };
 
   const sort_ = pallets_ => {
     pallets_.forEach((pallet, index) => {
-      console.log(`------------${pallet.id}----------`);
+      //   console.log(`------------${pallet.id}----------`);
 
       currentIndex = index;
       addCurrentIndex = false;
@@ -300,53 +259,65 @@ export const validate = pallets => {
     });
   };
 
-  for (var xx = 0; xx < 100; xx++) {
-    pallets = removeValidatedPallets(pallets, indexRemove);
+  const loopUntilAllPaletsOnLkw = () => {
+    for (var xx = 0; xx < 100; xx++) {
+      pallets = removeValidatedPallets(pallets, indexRemove);
 
-    if (pallets.length === 0) break;
+      if (pallets.length === 0) break;
 
-    try {
-      indexRemove = [];
-      sort_(pallets);
-    } catch (e) {
-      if (e !== BreakException) {
-        throw e;
+      try {
+        indexRemove = [];
+        sort_(pallets);
+      } catch (e) {
+        if (e !== BreakException) {
+          throw e;
+        }
       }
     }
-  }
+  };
 
-  if (validated) {
+  const addLeftOverLoading = () => {
     LKW.push(currentRow);
-    loadings.push({
-      //   pallets: validated,
+    trucks.push({
       lkw: currentLKW,
       arr: LKW
     });
-  }
+  };
 
-  createLoading(loadings);
-  findFreeSpaces(loadings);
-  insertFreeSpacesInto(loadings);
-  console.log("loadings", loadings);
+  const lkwList = [LKW_12, LKW_7];
+  var trucks = [];
+  var counter_lkw = 0;
+  var currentLKW = lkwList[0];
+  var indexRemove = [];
+  var width_counter = 0;
+  var height_counter = 0;
+  var addCurrentIndex = false;
+  var currentIndex = null;
+  var LKW = [];
+  var currentRow = [];
 
-  console.log("loadings2 = ", loadings);
+  pallets = unpackPalletGroups(pallets);
 
-  // console.log("LOADINGS", loadings);
-  // console.log("validated", validated);
-  // console.log("freeSpaces", freeSpaces);
+  loopUntilAllPaletsOnLkw();
 
-  //   freeSpaces.forEach(space => {
-  //     var index_ = space.position;
-  //     loadings[0].pallets.splice(index_, 0, space);
-  //   });
+  addLeftOverLoading();
 
-  return loadings;
+  reorderLoadings_(trucks);
+
+  return trucks;
 };
 
-const insertFreeSpacesInto = loadings => {
-  console.log("insertFreeSpacesInto", loadings);
+const reorderLoadings_ = trucks => {
+  validateTrucks(trucks);
+  createLoading(trucks);
+  findFreeSpaces(trucks);
+  insertFreeSpacesInto(trucks);
+};
 
-  const loopLoadings = loadings => {
+const insertFreeSpacesInto = trucks => {
+  console.log("insertFreeSpacesInto", trucks);
+
+  const loopLoadings = trucks => {
     const insertSpace = space => {
       console.log("insert space..", space);
 
@@ -360,16 +331,16 @@ const insertFreeSpacesInto = loadings => {
     };
 
     var currentLoading = null;
-    loadings.forEach(loading => {
+    trucks.forEach(loading => {
       currentLoading = loading;
       loopSpaces(loading.freeSpaces);
     });
   };
 
-  loopLoadings(loadings);
+  loopLoadings(trucks);
 };
 
-const findFreeSpaces = loadings => {
+const findFreeSpaces = trucks => {
   const addToFreeSpaces = (width, height, type) => {
     freeSpaces.push({
       freeSpaceType: type,
@@ -447,8 +418,8 @@ const findFreeSpaces = loadings => {
     });
   };
 
-  const loopLoadings = loadings => {
-    loadings.forEach(loading => {
+  const loopLoadings = trucks => {
+    trucks.forEach(loading => {
       var { lkw, arr } = loading;
       currentLKW = lkw;
 
@@ -464,17 +435,12 @@ const findFreeSpaces = loadings => {
   var rowCounter = 0;
   var columnCounter = 0;
   var palletIndexCounter = 0;
-  loopLoadings(loadings);
+  loopLoadings(trucks);
 };
 
-const reorderLoadings_ = trucks => {
+const validateTrucks = trucks => {
   var currentLKW = null;
-  var freeSpaces = [];
   var totalWidth = 0;
-  var rowCounter = 0;
-  var columnCounter = 0;
-  var palletIndexCounter = 0;
-
   const validateColumn = column => {
     const updateColumnValues = (pallet, height, width) => {
       currentHeight += height;
@@ -501,7 +467,7 @@ const reorderLoadings_ = trucks => {
     };
 
     const removeFromColumn = pallet => {
-      const indexRemove = findIndexPalletInArr(copy(currentLKW), pallet.id);
+      //   const indexRemove = findIndexPalletInArr(copy(currentLKW), pallet.id);
       alert("NEEDS TO BE IMPLEMENTTED 'removeFromColumn'");
     };
 
@@ -542,7 +508,7 @@ const reorderLoadings_ = trucks => {
     });
   };
 
-  const validateTrucks = trucks => {
+  const _validate = () => {
     trucks.forEach(truck => {
       currentLKW = truck;
 
@@ -557,20 +523,10 @@ const reorderLoadings_ = trucks => {
     }
   };
 
-  var totalWidth = 0;
   var palletsToMoveNextRow = [];
   var palletsMoveLKW = [];
-  var currentLKW = null;
-
-  validateTrucks(trucks);
-  console.log("trucks end = ", trucks);
-
-  createLoading(trucks);
-  findFreeSpaces(trucks);
-  console.log("FREE SPACES", trucks.freeSpaces);
-
-  insertFreeSpacesInto(trucks);
-  console.log("end //// trucks", trucks);
+  currentLKW = null;
+  _validate();
 };
 
 const createLoading = trucks => {

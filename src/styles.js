@@ -1,20 +1,40 @@
 import styled from "styled-components";
 
+export const InputElement = styled.input`
+  padding: 1rem;
+  border: none;
+  border: 1px solid darkgrey;
+  */background: #eee;
+  transition: 0.5s;
+  border-radius: 10px;
+  display: block;
+  width: 25%;
+  text-align: center;
+  font-size: 1.7em;
+  letter-spacing: 0.1rem;
+  font-weight: bold;
+
+  :active {
+    border: none;
+  }
+  :focus {
+    border: 1px solid darkgrey;
+    outline: none;
+  }
+  :hover {
+    font-size: 1.8rem;
+  }
+`;
+
 export const LKW = styled.div`
   border: 2px solid #232323;
   width: 745px;
   height: 255px;
   background: #111;
-  position: absolute;
+  position: relative;
   left: 50%;
   margin-left: -372px;
-  margin-top: 5rem;
-
-  ${({ count }) =>
-    count &&
-    `
-  top: ${20 * (count - 1)}rem;
- `}
+  margin-top: 1rem;
 
   ${({ width }) =>
     width &&
@@ -42,10 +62,17 @@ export const LoadingZone = styled.div`
 
 export const PalleteWrapper = styled.div`
 border: 1px solid #ccc;
-background: #fefefe;
-// margin: 0.5px;
+background-color: #fefefe;
 margin-top: 1.2px;
 position: relative;
+transition: .5s background;
+
+:hover{
+  background: #283593;
+  cursor: pointer;
+  color: #eee;
+}
+
 
 ${({ type }) =>
   type === "euro" &&
@@ -72,7 +99,7 @@ ${({ turn, type }) =>
  ${({ isSelected }) =>
    isSelected &&
    `
-  border : 2px solid #af4448;
+  background :#3f51b5;
  `}
 
  ${({ width, height }) =>
@@ -84,7 +111,7 @@ height : ${height}px;
 `}
 
 ${({ freeSpaceType, width }) =>
-  freeSpaceType == "end" &&
+  freeSpaceType === "end" &&
   `
   border : 2px solid #af4448;
   height : 96%;
@@ -96,7 +123,7 @@ ${({ freeSpaceType, width }) =>
  `}
 
  ${({ freeSpaceType }) =>
-   freeSpaceType == "filler" &&
+   freeSpaceType === "filler" &&
    `
    background: #af4448;
 `}
